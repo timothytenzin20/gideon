@@ -2,16 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>GIDEON</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    canvas { display: block; width: 100%; height: 100%; }
+
+    /* Canvas container — centers the canvas and provides letterboxing */
+    #gideon-container {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #gideon-canvas {
+      display: block;
+      min-width: 320px;
+      max-width: 1920px;
+      background: #000;
+    }
+
+    /* UI bar — top edge, wraps on narrow screens */
+    #gideon-ui {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 8px 14px;
+      max-width: 1920px; margin: 0 auto;
+      background: rgba(0, 0, 0, 0.82);
+      padding: 8px 14px;
+      font-family: monospace; font-size: 13px; color: #0f8;
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+    #gideon-ui label {
+      display: flex; align-items: center; gap: 6px;
+      white-space: nowrap;
+    }
+    #gideon-ui select, #gideon-ui input {
+      background: #111; color: #0f8; border: 1px solid #0f8;
+      font-family: monospace; font-size: 16px;
+      padding: 4px 6px; border-radius: 3px; outline: none;
+      -webkit-appearance: none;
+    }
+    #gideon-ui select { padding-right: 18px; }
+    #gideon-ui input[type="text"] { width: 120px; }
+
+    @media (max-width: 600px) {
+      #gideon-ui {
+        font-size: 12px; gap: 6px 10px; padding: 6px 8px;
+      }
+      #gideon-ui select, #gideon-ui input {
+        font-size: 16px; padding: 6px 8px;
+      }
+      #gideon-ui input[type="text"] { width: 100px; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="gideon-canvas"></canvas>
+  <div id="gideon-container">
+    <canvas id="gideon-canvas"></canvas>
+  </div>
+  <div id="gideon-ui">
+    <label>Mode
+      <select id="ui-mode">
+        <option value="ascii" selected>ASCII</option>
+        <option value="raw">Raw Webcam</option>
+      </select>
+    </label>
+    <label>Charset
+      <select id="ui-charset">
+        <option value="minimal" selected>Minimal</option>
+        <option value="standard">Standard</option>
+        <option value="dense">Dense</option>
+      </select>
+    </label>
+    <label>Color
+      <select id="ui-color">
+        <option value="mono">Green Mono</option>
+        <option value="full" selected>Full Color</option>
+      </select>
+    </label>
+    <label>Algorithm
+      <select id="ui-algorithm">
+        <option value="luminance" selected>Luminance</option>
+        <option value="edge">Edge</option>
+      </select>
+    </label>
+    <label>Custom
+      <input id="ui-custom-charset" type="text" placeholder="type chars..."
+             spellcheck="false" autocomplete="off" />
+    </label>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

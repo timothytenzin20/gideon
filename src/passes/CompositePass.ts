@@ -16,6 +16,8 @@ export interface CompositeUniforms {
   uScanlineStrength: { value: number };
   uGlowStrength: { value: number };
   uTime: { value: number };
+  uDebugMode: { value: number };
+  uMode: { value: number };
 }
 
 export class CompositePass {

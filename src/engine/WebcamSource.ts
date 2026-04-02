@@ -48,6 +48,10 @@ export class WebcamSource {
     return this.video.videoHeight;
   }
 
+  get aspectRatio(): number {
+    return this.video.videoWidth / (this.video.videoHeight || 1);
+  }
+
   dispose(): void {
     const stream = this.video.srcObject as MediaStream | null;
     stream?.getTracks().forEach((t) => t.stop());
