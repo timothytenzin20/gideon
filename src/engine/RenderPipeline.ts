@@ -6,7 +6,7 @@ import { AnalysisPass } from '../passes/AnalysisPass';
 import { AsciiMapPass } from '../passes/AsciiMapPass';
 import { CompositePass } from '../passes/CompositePass';
 
-const CELL_SIZE_PX = 4;
+const CELL_SIZE_PX = 8;
 
 export class RenderPipeline {
   private renderer: THREE.WebGLRenderer;
@@ -23,6 +23,10 @@ export class RenderPipeline {
   private uAsciiMapTex: { value: THREE.Texture | null };
   private uScreenResolution: { value: THREE.Vector2 };
   private uCellCount: { value: THREE.Vector2 };
+  private uDebugMode: { value: number };
+  private uMode: { value: number };
+  private uGlyphCount: { value: number };
+  private atlas: GlyphAtlas;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -38,6 +42,10 @@ export class RenderPipeline {
     this.uAsciiMapTex = { value: null };
     this.uScreenResolution = { value: new THREE.Vector2() };
     this.uCellCount = { value: new THREE.Vector2() };
+    this.uDebugMode = { value: 0.0 };
+    this.uMode = { value: 0 };
+    this.uGlyphCount = { value: atlas.glyphCount };
+    this.atlas = atlas;
 
     // Create FBOs at initial size
     this.createFBOs();
@@ -53,7 +61,7 @@ export class RenderPipeline {
     // Pass 2: ASCII Map
     this.asciiMapPass = new AsciiMapPass({
       uAnalysisTex: this.uAnalysisTex,
-      uGlyphCount: { value: atlas.glyphCount },
+      uGlyphCount: this.uGlyphCount,
       uEdgeCharThreshold: { value: 0.3 },
       uCellResolution: this.uCellCount,
     });
@@ -65,13 +73,15 @@ export class RenderPipeline {
       uWebcamTex: { value: webcam.texture },
       uScreenResolution: this.uScreenResolution,
       uCellResolution: this.uCellCount,
-      uGlyphCount: { value: atlas.glyphCount },
+      uGlyphCount: this.uGlyphCount,
       uColorMix: { value: 0.0 },
       uTintColor: { value: new THREE.Color(0x00ff88) },
       uVignetteStrength: { value: 0.3 },
       uScanlineStrength: { value: 0.15 },
       uGlowStrength: { value: 0.2 },
       uTime: this.uTime,
+      uDebugMode: this.uDebugMode,
+      uMode: this.uMode,
     });
   }
 
@@ -128,6 +138,22 @@ export class RenderPipeline {
 
     // Pass 5: Composite — fboAsciiMap → screen (screen resolution)
     this.passManager.renderPass(this.compositePass.material, null);
+  }
+
+  /** Debug mode: 0=normal, 1=luminance, 2=ascii map */
+  setDebugMode(mode: number): void {
+    this.uDebugMode.value = mode;
+  }
+
+  /** Render mode: 0=ascii, 1=raw webcam */
+  setMode(mode: number): void {
+    this.uMode.value = mode;
+  }
+
+  /** Rebuild glyph atlas with a new charset */
+  updateCharset(charset: string): void {
+    this.atlas.update(charset);
+    this.uGlyphCount.value = this.atlas.glyphCount;
   }
 
   dispose(): void {

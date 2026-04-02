@@ -17,12 +17,21 @@ uniform float uVignetteStrength;
 uniform float uScanlineStrength;
 uniform float uGlowStrength;
 uniform float uTime;
+uniform float uDebugMode; // 0=normal, 1=luminance, 2=ascii map
+uniform int uMode;        // 0=ascii, 1=raw webcam
 
 varying vec2 vUv;
 
 const float PI = 3.14159265359;
 
 void main() {
+  // Raw webcam passthrough
+  if (uMode == 1) {
+    vec2 mirrorUV = vec2(1.0 - vUv.x, vUv.y);
+    gl_FragColor = vec4(texture2D(uWebcamTex, mirrorUV).rgb, 1.0);
+    return;
+  }
+
   // 1. Cell coordinate and sub-cell position
   vec2 cellCoord = floor(vUv * uCellResolution);
   vec2 cellUV = fract(vUv * uCellResolution);
@@ -32,6 +41,17 @@ void main() {
   vec4 asciiData = texture2D(uAsciiMapTex, cellCenter);
   float atlasU = asciiData.r;
   float luma   = asciiData.b;
+
+  // Debug: show luminance
+  if (uDebugMode == 1.0) {
+    gl_FragColor = vec4(vec3(luma), 1.0);
+    return;
+  }
+  // Debug: show ascii map raw data
+  if (uDebugMode == 2.0) {
+    gl_FragColor = vec4(atlasU, asciiData.a * 0.5, luma, 1.0);
+    return;
+  }
 
   // 3. Sample glyph from atlas
   vec2 glyphUV = vec2(
