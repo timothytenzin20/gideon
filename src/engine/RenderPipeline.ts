@@ -7,6 +7,22 @@ import { AsciiMapPass } from '../passes/AsciiMapPass';
 import { CompositePass } from '../passes/CompositePass';
 
 const CELL_SIZE_PX = 8;
+const DEFAULT_CHARSET = ' .:-=+*#%@';
+
+/** Compute atlas U coordinates for edge direction characters */
+function computeEdgeCharIndices(charset: string): THREE.Vector4 {
+  const gc = charset.length;
+  const find = (ch: string) => {
+    const idx = charset.indexOf(ch);
+    return idx >= 0 ? idx / gc : -1.0;
+  };
+  return new THREE.Vector4(
+    find('|'),   // x: vertical edges
+    find('-'),   // y: horizontal edges
+    find('/'),   // z: diagonal /
+    find('\\'),  // w: diagonal \
+  );
+}
 
 export class RenderPipeline {
   private renderer: THREE.WebGLRenderer;
@@ -26,7 +42,11 @@ export class RenderPipeline {
   private uDebugMode: { value: number };
   private uMode: { value: number };
   private uGlyphCount: { value: number };
+  private uColorMix: { value: number };
+  private uAlgorithm: { value: number };
+  private uEdgeCharIndices: { value: THREE.Vector4 };
   private atlas: GlyphAtlas;
+  private currentCharset: string;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -45,7 +65,11 @@ export class RenderPipeline {
     this.uDebugMode = { value: 0.0 };
     this.uMode = { value: 0 };
     this.uGlyphCount = { value: atlas.glyphCount };
+    this.uColorMix = { value: 1.0 };
+    this.uAlgorithm = { value: 0.0 };
+    this.uEdgeCharIndices = { value: computeEdgeCharIndices(DEFAULT_CHARSET) };
     this.atlas = atlas;
+    this.currentCharset = DEFAULT_CHARSET;
 
     // Create FBOs at initial size
     this.createFBOs();
@@ -64,6 +88,8 @@ export class RenderPipeline {
       uGlyphCount: this.uGlyphCount,
       uEdgeCharThreshold: { value: 0.3 },
       uCellResolution: this.uCellCount,
+      uAlgorithm: this.uAlgorithm,
+      uEdgeCharIndices: this.uEdgeCharIndices,
     });
 
     // Pass 5: Composite
@@ -74,7 +100,7 @@ export class RenderPipeline {
       uScreenResolution: this.uScreenResolution,
       uCellResolution: this.uCellCount,
       uGlyphCount: this.uGlyphCount,
-      uColorMix: { value: 0.0 },
+      uColorMix: this.uColorMix,
       uTintColor: { value: new THREE.Color(0x00ff88) },
       uVignetteStrength: { value: 0.3 },
       uScanlineStrength: { value: 0.15 },
@@ -150,10 +176,22 @@ export class RenderPipeline {
     this.uMode.value = mode;
   }
 
+  /** Color mix: 0=green mono, 1=full webcam color */
+  setColorMix(value: number): void {
+    this.uColorMix.value = value;
+  }
+
+  /** Algorithm: 0=luminance, 1=edge */
+  setAlgorithm(value: number): void {
+    this.uAlgorithm.value = value;
+  }
+
   /** Rebuild glyph atlas with a new charset */
   updateCharset(charset: string): void {
+    this.currentCharset = charset;
     this.atlas.update(charset);
     this.uGlyphCount.value = this.atlas.glyphCount;
+    this.uEdgeCharIndices.value.copy(computeEdgeCharIndices(charset));
   }
 
   dispose(): void {

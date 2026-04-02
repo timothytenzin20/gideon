@@ -8,6 +8,8 @@ export interface AsciiMapUniforms {
   uGlyphCount: { value: number };
   uEdgeCharThreshold: { value: number };
   uCellResolution: { value: THREE.Vector2 };
+  uAlgorithm: { value: number };
+  uEdgeCharIndices: { value: THREE.Vector4 };
 }
 
 export class AsciiMapPass {

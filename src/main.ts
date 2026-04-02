@@ -9,12 +9,45 @@ const CHARSETS: Record<string, string> = {
   dense:    " .'`^\",:;Il!i~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
 };
 
+const MIN_WIDTH = 320;
+const MAX_WIDTH = 1920;
+
+/** Compute canvas CSS size that fits the window while preserving webcam aspect ratio */
+function fitCanvas(
+  canvas: HTMLCanvasElement,
+  aspect: number,
+  renderer: THREE.WebGLRenderer,
+  pipeline: RenderPipeline,
+) {
+  const winW = window.innerWidth;
+  const winH = window.innerHeight;
+
+  // Fit inside window, preserving aspect ratio
+  let w = winW;
+  let h = Math.round(w / aspect);
+  if (h > winH) {
+    h = winH;
+    w = Math.round(h * aspect);
+  }
+
+  // Clamp to min/max
+  w = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+  h = Math.round(w / aspect);
+
+  // Set CSS display size
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  // Set renderer drawing buffer to device-pixel size
+  renderer.setSize(w, h, false);
+  pipeline.resize();
+}
+
 async function main() {
   const canvas = document.getElementById('gideon-canvas') as HTMLCanvasElement;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.autoClear = false;
 
   const webcam = new WebcamSource();
@@ -23,14 +56,20 @@ async function main() {
   const atlas = new GlyphAtlas();
   const pipeline = new RenderPipeline(renderer, webcam, atlas);
 
+  const aspect = webcam.aspectRatio;
+
+  // Initial sizing
+  fitCanvas(canvas, aspect, renderer, pipeline);
+
   window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
-    pipeline.resize();
+    fitCanvas(canvas, aspect, renderer, pipeline);
   });
 
   // UI controls
   const modeSelect = document.getElementById('ui-mode') as HTMLSelectElement;
   const charsetSelect = document.getElementById('ui-charset') as HTMLSelectElement;
+  const colorSelect = document.getElementById('ui-color') as HTMLSelectElement;
+  const customInput = document.getElementById('ui-custom-charset') as HTMLInputElement;
 
   modeSelect.addEventListener('change', () => {
     const mode = modeSelect.value === 'raw' ? 1 : 0;
@@ -41,7 +80,31 @@ async function main() {
   charsetSelect.addEventListener('change', () => {
     const charset = CHARSETS[charsetSelect.value] ?? CHARSETS.minimal;
     pipeline.updateCharset(charset);
+    customInput.value = '';
     console.log('[GIDEON] Charset:', charsetSelect.value, `(${charset.length} glyphs)`);
+  });
+
+  const COLOR_VALUES: Record<string, number> = { mono: 0.0, full: 1.0 };
+  colorSelect.addEventListener('change', () => {
+    pipeline.setColorMix(COLOR_VALUES[colorSelect.value] ?? 0.0);
+    console.log('[GIDEON] Color:', colorSelect.value);
+  });
+
+  const algorithmSelect = document.getElementById('ui-algorithm') as HTMLSelectElement;
+  algorithmSelect.addEventListener('change', () => {
+    const algo = algorithmSelect.value === 'edge' ? 1 : 0;
+    pipeline.setAlgorithm(algo);
+    console.log('[GIDEON] Algorithm:', algorithmSelect.value);
+  });
+
+  customInput.addEventListener('input', () => {
+    const chars = customInput.value;
+    if (chars.length >= 2) {
+      const charset = chars.startsWith(' ') ? chars : ' ' + chars;
+      pipeline.updateCharset(charset);
+      charsetSelect.value = '';
+      console.log('[GIDEON] Custom charset:', `(${charset.length} glyphs)`);
+    }
   });
 
   // Debug toggle: press 'D' to cycle modes (0=normal, 1=luminance, 2=ascii map)
